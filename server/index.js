@@ -1,19 +1,49 @@
 const express=require('express')
-const app=express();
 const dotenv=require('dotenv')
 const mongoose=require('mongoose')
-const {UserModel}=require('./models/User')
+const User=require('./models/User')
+const jwt=require('jsonwebtoken');
+const cors=require('cors');
 
 dotenv.config();
+try {
+    
 mongoose.connect(process.env.MONGO_URL);
+} catch (error) {
+    if(error)
+    throw error;
+}
+const jwtsecret=process.env.JWT_SECRET;
+
+const app=express();
+
+app.use(express.json());
+app.use(cors({
+    credentials:true,
+    origin:process.env.CLIENT_URL,
+}))
 
 app.get('/test',(req,res)=>{
     res.json('test ok');
 })
 
-app.post('/register',(req,res)=>{
-    const {username,password}=req.body();
-    UserModel.create({username,password})
+app.post('/register',async(req,res)=>{
+    const {username,password}=req.body;
+    try {
+        const createdUser=await User.create({username,password});
+        jwt.sign({userId:createdUser._id},jwtsecret,{},(err,token)=>{
+            if(err)
+            throw err;
+            res.cookie('token',token).status(201).json('ok');
+        })
+        
+    } catch (error) {
+        if(error)
+        return error;
+        res.status(500).json('error');
+        
+    }
+   
      
 })
 
